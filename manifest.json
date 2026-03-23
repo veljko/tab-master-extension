@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Master: MRU Switch, Rearrange & Position",
+  "version": "1.0.0",
+  "description": "All-in-one tab management: MRU tab switching (CLUT), tab rearranging with shortcuts, and control over where new tabs open.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "commands": {
+    "quick-switch": {
+      "suggested_key": {
+        "default": "Alt+W"
+      },
+      "description": "MRU Quick Switch: cycle to last used tab (press rapidly to go further back)"
+    },
+    "normal-switch-forward": {
+      "suggested_key": {
+        "default": "Alt+S"
+      },
+      "description": "MRU Normal Switch: cycle through recently used tabs (forward)"
+    },
+    "normal-switch-backward": {
+      "suggested_key": {
+        "default": "Shift+Alt+S"
+      },
+      "description": "MRU Normal Switch: cycle through recently used tabs (backward)"
+    },
+    "move-tab-left": {
+      "suggested_key": {
+        "default": "Shift+Alt+Left"
+      },
+      "description": "Move current tab one position to the left"
+    },
+    "move-tab-right": {
+      "suggested_key": {
+        "default": "Shift+Alt+Right"
+      },
+      "description": "Move current tab one position to the right"
+    },
+    "move-tab-first": {
+      "suggested_key": {
+        "default": "Shift+Alt+Up"
+      },
+      "description": "Move current tab to the first (leftmost/top) position"
+    },
+    "move-tab-last": {
+      "suggested_key": {
+        "default": "Shift+Alt+Down"
+      },
+      "description": "Move current tab to the last (rightmost/bottom) position"
+    }
+  }
+}
