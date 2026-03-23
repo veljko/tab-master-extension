@@ -208,7 +208,7 @@ chrome.tabs.onCreated.addListener(async (newTab) => {
   }
 
   if (newTab.index !== targetIndex) {
-    chrome.tabs.move(newTab.id, { index: targetIndex });
+    await chrome.tabs.move(newTab.id, { index: targetIndex });
   }
 });
 
@@ -218,26 +218,12 @@ chrome.tabs.onCreated.addListener(async (newTab) => {
 
 chrome.commands.onCommand.addListener((command) => {
   switch (command) {
-    case 'quick-switch':
-      handleQuickSwitch();
-      break;
-    case 'normal-switch-forward':
-      handleNormalSwitchForward();
-      break;
-    case 'normal-switch-backward':
-      handleNormalSwitchBackward();
-      break;
-    case 'move-tab-left':
-      moveTabLeft();
-      break;
-    case 'move-tab-right':
-      moveTabRight();
-      break;
-    case 'move-tab-first':
-      moveTabFirst();
-      break;
-    case 'move-tab-last':
-      moveTabLast();
-      break;
+    case 'quick-switch':          handleQuickSwitch();        break;
+    case 'normal-switch-forward': handleNormalSwitchForward(); break;
+    case 'normal-switch-backward':handleNormalSwitchBackward();break;
+    case 'move-tab-left':         moveTabLeft();              break;
+    case 'move-tab-right':        moveTabRight();             break;
+    case 'move-tab-first':        moveTabFirst();             break;
+    case 'move-tab-last':         moveTabLast();              break;
   }
 });

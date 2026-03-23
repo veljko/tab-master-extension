@@ -11,7 +11,10 @@
   "background": {
     "service_worker": "background.js"
   },
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "permissions": [
     "tabs",
     "storage"
@@ -24,15 +27,9 @@
       "description": "MRU Quick Switch: cycle to last used tab (press rapidly to go further back)"
     },
     "normal-switch-forward": {
-      "suggested_key": {
-        "default": "Alt+S"
-      },
       "description": "MRU Normal Switch: cycle through recently used tabs (forward)"
     },
     "normal-switch-backward": {
-      "suggested_key": {
-        "default": "Shift+Alt+S"
-      },
       "description": "MRU Normal Switch: cycle through recently used tabs (backward)"
     },
     "move-tab-left": {
@@ -54,9 +51,6 @@
       "description": "Move current tab to the first (leftmost/top) position"
     },
     "move-tab-last": {
-      "suggested_key": {
-        "default": "Shift+Alt+Down"
-      },
       "description": "Move current tab to the last (rightmost/bottom) position"
     }
   }
