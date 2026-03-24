@@ -180,8 +180,30 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
+// Flag set during the session-restore window so we don't reposition restored tabs.
+// onStartup fires when the browser starts and Edge restores the previous session;
+// all the onCreated events that fire in that window are restore events, not
+// user-initiated new tabs, so we must leave them alone.
+const RESTORE_GRACE_PERIOD_MS = 2000;
+let isRestoringSession = false;
+
+chrome.runtime.onStartup.addListener(() => {
+  isRestoringSession = true;
+  setTimeout(() => { isRestoringSession = false; }, RESTORE_GRACE_PERIOD_MS);
+});
+
 chrome.tabs.onCreated.addListener(async (newTab) => {
   if (newTabPosition === 'default') return;
+
+  // Skip repositioning during session restore to preserve saved tab order,
+  // pinned state positions, and tab group memberships.
+  if (isRestoringSession) return;
+
+  // Also skip tabs that already have a real URL at creation time — these are
+  // programmatically opened tabs (e.g. links opened in a new tab) that Edge
+  // has already placed correctly, or late-arriving restore events.
+  const url = newTab.pendingUrl || newTab.url || '';
+  if (url && url !== 'chrome://newtab/' && url !== 'about:blank' && !url.startsWith('edge://newtab')) return;
 
   let targetIndex;
   const allTabs = await chrome.tabs.query({ windowId: newTab.windowId });

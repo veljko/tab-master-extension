@@ -1,5 +1,10 @@
+$manifestPath = Join-Path $PSScriptRoot "manifest.json"
+$manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+$version = $manifest.version
+
 $distDir = Join-Path $PSScriptRoot "dist"
-$zipPath = Join-Path $distDir "tab-master-extension.zip"
+$zipName = "tab-master-extension-v$version.zip"
+$zipPath = Join-Path $distDir $zipName
 
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 
