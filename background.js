@@ -15,13 +15,39 @@ let quickSwitchIndex = 0;
 
 const QUICK_SWITCH_INTERVAL_MS = 400; // ms window to detect rapid keypresses
 
+// Persist MRU list to session storage so it survives service worker restarts.
+// chrome.storage.session is in-memory and scoped to the browser session —
+// it is never written to disk and is cleared automatically when the browser closes.
+function saveMRUList() {
+  chrome.storage.session.set({ mruList });
+}
+
 function moveToFront(tabId) {
   mruList = [tabId, ...mruList.filter(id => id !== tabId)];
+  saveMRUList();
 }
 
 function removeFromMRU(tabId) {
   mruList = mruList.filter(id => id !== tabId);
+  saveMRUList();
 }
+
+// On service worker start, restore MRU list from session storage first.
+// This handles the case where the browser killed the idle service worker
+// mid-session (e.g. while Edge was minimized) — without this the list would
+// reset to empty and Alt+W history would be lost.
+(async () => {
+  const { mruList: saved } = await chrome.storage.session.get('mruList');
+  if (saved && saved.length > 0) {
+    mruList = saved;
+  } else {
+    // No saved state (fresh browser start or first install) — build from tabs.
+    const tabs = await chrome.tabs.query({});
+    mruList = tabs.map(t => t.id);
+    const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (active) moveToFront(active.id);
+  }
+})();
 
 // When a tab is activated, push it to front of MRU list
 chrome.tabs.onActivated.addListener(({ tabId }) => {
@@ -34,7 +60,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   removeFromMRU(tabId);
 });
 
-// On startup, populate MRU list from all open tabs
+// On browser startup, session storage is empty (new session), so rebuild from tabs.
 chrome.runtime.onStartup.addListener(async () => {
   const tabs = await chrome.tabs.query({});
   mruList = tabs.map(t => t.id);
