@@ -206,16 +206,49 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
-// Flag set during the session-restore window so we don't reposition restored tabs.
-// onStartup fires when the browser starts and Edge restores the previous session;
-// all the onCreated events that fire in that window are restore events, not
-// user-initiated new tabs, so we must leave them alone.
-const RESTORE_GRACE_PERIOD_MS = 2000;
+// Track session restore with an idle-based window so long restores are covered.
+// Edge can restore many tabs/groups in waves; a short fixed timer can end too
+// early and cause restored tabs to be treated as user-created new tabs.
+const RESTORE_IDLE_SETTLE_MS = 1200;
+const RESTORE_MAX_WINDOW_MS = 45000;
 let isRestoringSession = false;
+let restoreIdleTimer = null;
+let restoreMaxTimer = null;
+
+function endSessionRestoreTracking() {
+  isRestoringSession = false;
+  if (restoreIdleTimer) {
+    clearTimeout(restoreIdleTimer);
+    restoreIdleTimer = null;
+  }
+  if (restoreMaxTimer) {
+    clearTimeout(restoreMaxTimer);
+    restoreMaxTimer = null;
+  }
+}
+
+function bumpRestoreIdleTimer() {
+  if (restoreIdleTimer) clearTimeout(restoreIdleTimer);
+  restoreIdleTimer = setTimeout(() => {
+    endSessionRestoreTracking();
+  }, RESTORE_IDLE_SETTLE_MS);
+}
+
+function beginSessionRestoreTracking() {
+  endSessionRestoreTracking();
+  isRestoringSession = true;
+
+  // Always stop tracking eventually so startup state can't leak forever.
+  restoreMaxTimer = setTimeout(() => {
+    endSessionRestoreTracking();
+  }, RESTORE_MAX_WINDOW_MS);
+
+  // If restore is small, exit quickly once no more tabs are being created.
+  bumpRestoreIdleTimer();
+}
 
 chrome.runtime.onStartup.addListener(() => {
-  isRestoringSession = true;
-  setTimeout(() => { isRestoringSession = false; }, RESTORE_GRACE_PERIOD_MS);
+  beginSessionRestoreTracking();
 });
 
 chrome.tabs.onCreated.addListener(async (newTab) => {
@@ -223,7 +256,13 @@ chrome.tabs.onCreated.addListener(async (newTab) => {
 
   // Skip repositioning during session restore to preserve saved tab order,
   // pinned state positions, and tab group memberships.
-  if (isRestoringSession) return;
+  if (isRestoringSession) {
+    bumpRestoreIdleTimer();
+    return;
+  }
+
+  // Never override Edge placement for pinned/grouped tabs.
+  if (newTab.pinned || (typeof newTab.groupId === 'number' && newTab.groupId !== -1)) return;
 
   // Also skip tabs that already have a real URL at creation time — these are
   // programmatically opened tabs (e.g. links opened in a new tab) that Edge

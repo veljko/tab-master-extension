@@ -13,6 +13,7 @@ if (Test-Path $zipPath) { Remove-Item $zipPath }
 $files = @(
     "manifest.json",
     "background.js",
+    "content.js",
     "options.html",
     "options.js",
     "icons\icon16.png",
@@ -20,6 +21,14 @@ $files = @(
     "icons\icon128.png"
 )
 
-Compress-Archive -Path ($files | ForEach-Object { Join-Path $PSScriptRoot $_ }) -DestinationPath $zipPath
+# Build zip manually so folder structure (icons/) is preserved
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::Open($zipPath, 'Create')
+foreach ($rel in $files) {
+    $full = Join-Path $PSScriptRoot $rel
+    $entryName = $rel -replace '\\', '/'
+    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $full, $entryName) | Out-Null
+}
+$zip.Dispose()
 
 Write-Host "Created: $zipPath"
