@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Master: MRU Switch, Rearrange & Position",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "All-in-one tab management: MRU tab switching (CLUT), tab rearranging with shortcuts, and control over where new tabs open.",
   "icons": {
     "16": "icons/icon16.png",

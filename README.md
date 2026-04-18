@@ -53,6 +53,26 @@ Chrome limits extensions to **4 default shortcuts**. The following are unassigne
 - MRU Normal Switch (backward)
 - Move tab to last position
 
+To enable Ctrl+Tab functionality, it’s best to use AutoHotkey.
+
+```
+#Requires AutoHotkey v2.0
+#SingleInstance Force
+
+; Remap Ctrl+Tab -> Alt+W for Tab Master extension (MRU quick switch)
+; Scoped to Edge and Chrome only — doesn't affect other apps.
+
+#HotIf WinActive("ahk_exe msedge.exe")
+^Tab:: Send("!w")
+^+Tab:: Send("!w")   ; Ctrl+Shift+Tab also triggers quick switch (keeps cycling)
+#HotIf
+
+#HotIf WinActive("ahk_exe chrome.exe")
+^Tab:: Send("!w")
+^+Tab:: Send("!w")
+#HotIf
+```
+
 ## Options Page
 
 Access via the extension's options or `chrome://extensions` → Details → Extension options.
@@ -71,7 +91,7 @@ This creates `dist/tab-master-extension.zip` containing all required files, read
 
 ## Credits
 
-This extension merges functionality from three open-source extensions:
+This extension integrates three MIT‑licensed open‑source projects into a single package.
 
 - **[CLUT](https://github.com/harshayburadkar/clut-chrome-extension)** by harshayburadkar — MRU tab switching
 - **Rearrange Tabs** by mohnish — tab ordering shortcuts
