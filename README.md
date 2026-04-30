@@ -14,8 +14,6 @@ Tracks tabs in most-recently-used order. Two switching modes:
 - **Quick Switch** (`Alt+W` by default) — press once to jump to the previous tab; press rapidly to cycle further back through history
 - **Normal Switch forward/backward** — unassigned by default; assign in `chrome://extensions/shortcuts`
 
-> **PowerToys tip:** Map Ctrl+Tab → Alt+W in PowerToys Keyboard Manager (scoped to `msedge.exe` or `chrome.exe`) to get browser-native-feeling MRU switching.
-
 ### Tab Rearranging
 | Shortcut | Action |
 |---|---|
