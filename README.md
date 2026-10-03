@@ -39,6 +39,26 @@ Configure in the extension's Options page where new tabs open:
 3. Enable **Developer mode**
 4. Click **Load unpacked** and select this folder
 
+## Local Development Workflow
+
+Requirements: Node.js 18 or newer and Chrome or Edge. No npm packages need to be installed.
+
+1. Load the repository folder as an unpacked extension from `chrome://extensions` or `edge://extensions`. Keep Developer mode enabled.
+2. Reproduce an issue in the browser and note the browser/version, steps, and expected versus actual behavior.
+3. Add or update a focused regression test in `tests/` before changing behavior where practical.
+4. Run `npm run validate` to syntax-check the extension scripts and run the automated checks.
+5. Make the smallest fix, rerun validation, then reload the unpacked extension and manually verify the affected browser behavior. Extension APIs and keyboard shortcuts still require a browser smoke test.
+6. Run `npm run package` to create a versioned ZIP in `dist/` when you need a store package. `dist/` is generated output and is ignored by Git.
+
+Useful commands:
+
+- `npm test` — run automated checks using Node's built-in test runner.
+- `npm run check` — syntax-check the extension JavaScript.
+- `npm run validate` — run both checks and tests.
+- `npm run package` — package the extension using `build.ps1` (PowerShell).
+
+Keep changes to one issue or behavior at a time so failures are easy to attribute. Before committing, review `git diff` and confirm the browser smoke test for the changed feature.
+
 ## Keyboard Shortcuts
 
 Default shortcuts are assigned in the manifest. To change or assign unassigned shortcuts:
@@ -75,7 +95,7 @@ To enable Ctrl+Tab functionality, it’s best to use AutoHotkey.
 
 Access via the extension's options or `chrome://extensions` → Details → Extension options.
 
-Set your preferred new tab position here.
+Set your preferred new tab position here. With a non-default position selected, newly created tabs are moved to that position and selected, including tabs opened with Ctrl+Click. Choose **Browser default** to leave placement and selection behavior to the browser.
 
 ## Building for Store Submission
 

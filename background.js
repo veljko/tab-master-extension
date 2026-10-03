@@ -206,45 +206,38 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
-// Track session restore with an idle-based window so long restores are covered.
-// Edge can restore many tabs/groups in waves; a short fixed timer can end too
-// early and cause restored tabs to be treated as user-created new tabs.
-const RESTORE_IDLE_SETTLE_MS = 1200;
-const RESTORE_MAX_WINDOW_MS = 45000;
-let isRestoringSession = false;
-let restoreIdleTimer = null;
-let restoreMaxTimer = null;
+// Protect restored tabs/groups during slow, multi-wave startup restores. Store
+// timestamps in session storage so the protection survives worker restarts.
+const RESTORE_IDLE_SETTLE_MS = 30000;
+const RESTORE_MAX_WINDOW_MS = 300000;
+let restoreStartedAt = 0;
+let restoreLastActivityAt = 0;
 
-function endSessionRestoreTracking() {
-  isRestoringSession = false;
-  if (restoreIdleTimer) {
-    clearTimeout(restoreIdleTimer);
-    restoreIdleTimer = null;
-  }
-  if (restoreMaxTimer) {
-    clearTimeout(restoreMaxTimer);
-    restoreMaxTimer = null;
-  }
+const restoreStateReady = chrome.storage.session
+  .get(['restoreStartedAt', 'restoreLastActivityAt'])
+  .then((saved) => {
+    if (restoreStartedAt === 0) {
+      restoreStartedAt = saved.restoreStartedAt || 0;
+      restoreLastActivityAt = saved.restoreLastActivityAt || 0;
+    }
+  });
+
+async function beginSessionRestoreTracking() {
+  restoreStartedAt = Date.now();
+  restoreLastActivityAt = restoreStartedAt;
+  await chrome.storage.session.set({ restoreStartedAt, restoreLastActivityAt });
 }
 
-function bumpRestoreIdleTimer() {
-  if (restoreIdleTimer) clearTimeout(restoreIdleTimer);
-  restoreIdleTimer = setTimeout(() => {
-    endSessionRestoreTracking();
-  }, RESTORE_IDLE_SETTLE_MS);
+function isSessionRestoreActive() {
+  const now = Date.now();
+  return restoreStartedAt > 0
+    && now - restoreStartedAt < RESTORE_MAX_WINDOW_MS
+    && now - restoreLastActivityAt < RESTORE_IDLE_SETTLE_MS;
 }
 
-function beginSessionRestoreTracking() {
-  endSessionRestoreTracking();
-  isRestoringSession = true;
-
-  // Always stop tracking eventually so startup state can't leak forever.
-  restoreMaxTimer = setTimeout(() => {
-    endSessionRestoreTracking();
-  }, RESTORE_MAX_WINDOW_MS);
-
-  // If restore is small, exit quickly once no more tabs are being created.
-  bumpRestoreIdleTimer();
+async function recordRestoreActivity() {
+  restoreLastActivityAt = Date.now();
+  await chrome.storage.session.set({ restoreLastActivityAt });
 }
 
 chrome.runtime.onStartup.addListener(() => {
@@ -252,23 +245,18 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.tabs.onCreated.addListener(async (newTab) => {
+  await restoreStateReady;
   if (newTabPosition === 'default') return;
 
   // Skip repositioning during session restore to preserve saved tab order,
   // pinned state positions, and tab group memberships.
-  if (isRestoringSession) {
-    bumpRestoreIdleTimer();
+  if (isSessionRestoreActive()) {
+    await recordRestoreActivity();
     return;
   }
 
   // Never override Edge placement for pinned/grouped tabs.
   if (newTab.pinned || (typeof newTab.groupId === 'number' && newTab.groupId !== -1)) return;
-
-  // Also skip tabs that already have a real URL at creation time — these are
-  // programmatically opened tabs (e.g. links opened in a new tab) that Edge
-  // has already placed correctly, or late-arriving restore events.
-  const url = newTab.pendingUrl || newTab.url || '';
-  if (url && url !== 'chrome://newtab/' && url !== 'about:blank' && !url.startsWith('edge://newtab')) return;
 
   let targetIndex;
   const allTabs = await chrome.tabs.query({ windowId: newTab.windowId });
@@ -294,9 +282,14 @@ chrome.tabs.onCreated.addListener(async (newTab) => {
       return;
   }
 
-  if (newTab.index !== targetIndex) {
-    await chrome.tabs.move(newTab.id, { index: targetIndex });
+  const currentTab = await chrome.tabs.get(newTab.id).catch(() => null);
+  if (!currentTab || currentTab.pinned || (typeof currentTab.groupId === 'number' && currentTab.groupId !== -1)) return;
+  if (isSessionRestoreActive()) return;
+
+  if (currentTab.index !== targetIndex) {
+    await chrome.tabs.move(currentTab.id, { index: targetIndex });
   }
+  await chrome.tabs.update(currentTab.id, { active: true });
 });
 
 // -----------------------------------------------------------------------------
