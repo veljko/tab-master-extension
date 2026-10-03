@@ -97,6 +97,8 @@ Access via the extension's options or `chrome://extensions` → Details → Exte
 
 Set your preferred new tab position here. With a non-default position selected, newly created tabs are moved to that position and selected, including tabs opened with Ctrl+Click. Choose **Browser default** to leave placement and selection behavior to the browser.
 
+See the [privacy policy](./PRIVACY.md) for details about the browser-managed storage used by the extension.
+
 ## Building for Store Submission
 
 Run the included PowerShell script to package the extension:
