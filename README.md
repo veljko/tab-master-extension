@@ -97,6 +97,8 @@ Access via the extension's options or `chrome://extensions` → Details → Exte
 
 Set your preferred new tab position here. With a non-default position selected, newly created tabs are moved to that position and selected, including tabs opened with Ctrl+Click. Choose **Browser default** to leave placement and selection behavior to the browser.
 
+During browser startup, automatic positioning and selection are paused to preserve restored tab and group order, including in Edge's vertical tabs pane. This protection starts before the browser's startup event, survives service worker restarts, and ends after 30 seconds without tab creation (or at most 5 minutes). Tabs opened manually during that interval also keep their browser-assigned position and selection.
+
 See the [privacy policy](./PRIVACY.md) for details about the browser-managed storage used by the extension.
 
 ## Building for Store Submission

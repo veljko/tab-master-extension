@@ -1,6 +1,6 @@
 {
   "name": "tab-master-extension",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "Local development scripts for the Tab Master browser extension",
   "engines": {

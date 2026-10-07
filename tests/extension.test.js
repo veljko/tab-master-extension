@@ -53,21 +53,25 @@ test('all declared commands have a background-worker handler', () => {
   }
 });
 
-test('new link tabs are selected without moving restored or grouped tabs', async () => {
+function createBackgroundHarness({ sessionState, position = 'first', now = 60000 } = {}) {
   const listeners = {};
   const tabs = [
     { id: 1, index: 0, windowId: 1, active: true, url: 'https://example.com/' },
     { id: 2, index: 1, windowId: 1, active: false, url: 'https://example.com/other' },
     { id: 3, index: 2, windowId: 1, active: false, url: 'https://example.com/new' },
   ];
+  const state = sessionState ?? { restoreStartedAt: 1, restoreLastActivityAt: 1 };
+  let currentTime = now;
+  const moves = [];
+  const updates = [];
   const event = (name) => ({ addListener: (listener) => { listeners[name] = listener; } });
   const chrome = {
     storage: {
       session: {
-        get: async (keys) => Array.isArray(keys) ? {} : ({ mruList: tabs.map((tab) => tab.id) }),
-        set: async () => {},
+        get: async (keys) => Array.isArray(keys) ? { ...state } : ({ mruList: tabs.map((tab) => tab.id) }),
+        set: async (values) => { Object.assign(state, values); },
       },
-      sync: { get: (_defaults, callback) => callback({ newTabPosition: 'first' }) },
+      sync: { get: (_defaults, callback) => callback({ newTabPosition: position }) },
       onChanged: event('storageChanged'),
     },
     tabs: {
@@ -81,11 +85,13 @@ test('new link tabs are selected without moving restored or grouped tabs', async
         && (!query.highlighted || tab.highlighted || tab.active),
       ),
       move: async (id, { index }) => {
+        moves.push(id);
         const [tab] = tabs.splice(tabs.findIndex((item) => item.id === id), 1);
         tabs.splice(index, 0, tab);
         tabs.forEach((item, tabIndex) => { item.index = tabIndex; });
       },
       update: async (id, properties) => {
+        updates.push(id);
         if (properties.active) {
           tabs.forEach((tab) => { tab.active = tab.id === id; });
         }
@@ -96,8 +102,15 @@ test('new link tabs are selected without moving restored or grouped tabs', async
     commands: { onCommand: event('command') },
   };
 
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'background.js'), 'utf8'), { chrome });
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'background.js'), 'utf8'), {
+    chrome,
+    Date: class extends Date { static now() { return currentTime; } },
+  });
+  return { listeners, tabs, moves, updates, state, setTime: (time) => { currentTime = time; } };
+}
 
+test('new link tabs are selected without moving restored or grouped tabs', async () => {
+  const { listeners, tabs } = createBackgroundHarness();
   await listeners.created(tabs.find((tab) => tab.id === 3));
   assert.equal(tabs[0].id, 3);
   assert.equal(tabs[0].active, true);
@@ -114,4 +127,50 @@ test('new link tabs are selected without moving restored or grouped tabs', async
   await listeners.created(restoredTab);
   assert.equal(restoredTab.index, 4);
   assert.equal(restoredTab.active, false);
+});
+
+test('cold-start tab creation before onStartup preserves tab and group order', async () => {
+  for (const position of ['first', 'last', 'right-of-current', 'left-of-current']) {
+    const { listeners, tabs, moves, updates } = createBackgroundHarness({ sessionState: {}, position });
+    for (const tab of [...tabs]) {
+      await listeners.created({ ...tab, groupId: -1 });
+    }
+    assert.deepEqual(moves, [], position);
+    assert.deepEqual(updates, [], position);
+    assert.deepEqual(tabs.map((tab) => tab.id), [1, 2, 3], position);
+    await listeners.startup();
+    tabs[0].groupId = 7;
+    tabs[1].groupId = 7;
+    assert.deepEqual(tabs.map((tab) => tab.id), [1, 2, 3], position);
+  }
+});
+
+test('restore tracking survives worker restarts and settles after inactivity', async () => {
+  const { listeners, tabs, moves, updates, state, setTime } = createBackgroundHarness({ sessionState: {} });
+  await listeners.created(tabs[2]);
+  assert.deepEqual(moves, []);
+  assert.deepEqual(updates, []);
+
+  const restarted = createBackgroundHarness({ sessionState: state, now: 80000 });
+  await restarted.listeners.created(restarted.tabs[2]);
+  assert.deepEqual(restarted.moves, []);
+  assert.deepEqual(restarted.updates, []);
+  assert.equal(state.restoreLastActivityAt, 80000);
+
+  setTime(110001);
+  await listeners.created(tabs[2]);
+  assert.deepEqual(moves, [3]);
+  assert.deepEqual(updates, [3]);
+});
+
+test('restore activity extends the idle guard but not the maximum window', async () => {
+  const { listeners, tabs, moves, setTime } = createBackgroundHarness({ sessionState: {} });
+  for (let time = 60000; time < 360000; time += 20000) {
+    setTime(time);
+    await listeners.created(tabs[2]);
+    assert.deepEqual(moves, []);
+  }
+  setTime(360000);
+  await listeners.created(tabs[2]);
+  assert.deepEqual(moves, [3]);
 });

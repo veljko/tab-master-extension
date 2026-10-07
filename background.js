@@ -215,10 +215,15 @@ let restoreLastActivityAt = 0;
 
 const restoreStateReady = chrome.storage.session
   .get(['restoreStartedAt', 'restoreLastActivityAt'])
-  .then((saved) => {
-    if (restoreStartedAt === 0) {
-      restoreStartedAt = saved.restoreStartedAt || 0;
+  .then(async (saved) => {
+    if (restoreStartedAt !== 0) return;
+    if (saved.restoreStartedAt > 0) {
+      restoreStartedAt = saved.restoreStartedAt;
       restoreLastActivityAt = saved.restoreLastActivityAt || 0;
+    } else {
+      // Restored tabs can emit onCreated before runtime.onStartup in Edge.
+      // Arm the guard on a fresh session before any creation handler proceeds.
+      await beginSessionRestoreTracking();
     }
   });
 
