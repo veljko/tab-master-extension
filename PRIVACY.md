@@ -8,7 +8,7 @@ Tab Master does not send browsing data to the developer or to third-party analyt
 
 Tab Master uses browser-managed storage for its features:
 
-- It stores tab IDs and their recent-use order in session storage to provide MRU tab switching. This session state is not a list of URLs, page titles, or page contents, and is cleared when the browser session ends.
+- It stores tab IDs and their recent-use order in session storage to provide MRU tab switching. It also stores startup tab IDs to avoid repositioning recognized restored tabs. This session state is not a list of URLs, page titles, or page contents, and is cleared when the browser session ends.
 - It stores the selected new-tab position in browser sync storage so the preference can follow the browser profile across devices. The browser's sync provider handles synchronization under its own privacy terms.
 
 The extension uses this information only to provide tab management. It does not sell or share it with the developer or other third parties, and it does not collect page content, URLs, passwords, or other site data.

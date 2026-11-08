@@ -95,9 +95,11 @@ To enable Ctrl+Tab functionality, it’s best to use AutoHotkey.
 
 Access via the extension's options or `chrome://extensions` → Details → Extension options.
 
-Set your preferred new tab position here. With a non-default position selected, newly created tabs are moved to that position and selected, including tabs opened with Ctrl+Click. Choose **Browser default** to leave placement and selection behavior to the browser.
+Set your preferred new tab position here. With a non-default position selected, newly created tabs are moved without changing which tab is selected. Ctrl+T tabs stay selected; Ctrl+Click tabs stay in the background. **First** places an unpinned tab immediately after pinned tabs, including at the top of Edge's vertical tabs pane. Pinned and grouped tabs keep their browser-assigned placement. Choose **Browser default** to leave placement and selection behavior to the browser.
 
-During browser startup, automatic positioning and selection are paused to preserve restored tab and group order, including in Edge's vertical tabs pane. This protection starts before the browser's startup event, survives service worker restarts, and ends after 30 seconds without tab creation (or at most 5 minutes). Tabs opened manually during that interval also keep their browser-assigned position and selection.
+At fresh-session initialization and browser startup, the extension snapshots existing tab IDs to protect restored tab order. These identities are stored in session storage, survive service worker restarts, and remain protected until the tabs close rather than expiring on a timer. New tabs not in those snapshots are eligible for positioning immediately.
+
+The browser does not expose a definitive restored-tab flag. Tabs created after the startup snapshots, or when Edge reopens while its profile is already running in the background, may still be repositioned. They are never automatically selected by the positioning feature, so it does not activate unloaded restored tabs and trigger their reload. Tabs included in the initial snapshot conservatively keep their existing position, even if opened manually during initialization.
 
 See the [privacy policy](./PRIVACY.md) for details about the browser-managed storage used by the extension.
 
@@ -109,7 +111,17 @@ Run the included PowerShell script to package the extension:
 .\build.ps1
 ```
 
-This creates `dist/tab-master-extension.zip` containing all required files, ready for upload to the Chrome Web Store or Edge Add-ons dashboard.
+This creates `dist/tab-master-extension-v<version>.zip` (for example, `dist/tab-master-extension-v1.0.8.zip`) containing all required files, ready for upload to the Chrome Web Store or Edge Add-ons dashboard.
+
+To update an existing Chrome Web Store listing:
+
+1. Ensure the manifest version is higher than the currently published version.
+2. Run `npm run validate` and `npm run package`.
+3. Open the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) and select the existing extension.
+4. On the **Package** tab, choose **Upload New Package** and upload the versioned ZIP.
+5. Update the store listing and privacy practices if needed, then choose **Submit for Review**. Select automatic publishing after approval, or publish manually once approved.
+
+Browser extensions are published to the Chrome Web Store, not Google Play.
 
 ## Credits
 

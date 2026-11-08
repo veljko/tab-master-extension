@@ -194,9 +194,12 @@ async function moveTabLast() {
 
 let newTabPosition = 'last'; // default setting
 
-// Load saved setting
-chrome.storage.sync.get({ newTabPosition: 'last' }, (result) => {
-  newTabPosition = result.newTabPosition;
+// Wait for the saved setting before handling creation events.
+const newTabPositionReady = new Promise((resolve) => {
+  chrome.storage.sync.get({ newTabPosition: 'last' }, (result) => {
+    newTabPosition = result.newTabPosition;
+    resolve();
+  });
 });
 
 // Listen for setting changes from options page
@@ -206,59 +209,61 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
-// Protect restored tabs/groups during slow, multi-wave startup restores. Store
-// timestamps in session storage so the protection survives worker restarts.
-const RESTORE_IDLE_SETTLE_MS = 30000;
-const RESTORE_MAX_WINDOW_MS = 300000;
-let restoreStartedAt = 0;
-let restoreLastActivityAt = 0;
+// Protect startup tab identities, not a time window. Session storage preserves
+// this protection across worker restarts, including delayed creation events.
+const restoredTabIds = new Set();
+const observedNewTabIds = new Set();
+const removedTabIds = new Set();
+let restoreStorageWrite = Promise.resolve();
 
-const restoreStateReady = chrome.storage.session
-  .get(['restoreStartedAt', 'restoreLastActivityAt'])
-  .then(async (saved) => {
-    if (restoreStartedAt !== 0) return;
-    if (saved.restoreStartedAt > 0) {
-      restoreStartedAt = saved.restoreStartedAt;
-      restoreLastActivityAt = saved.restoreLastActivityAt || 0;
-    } else {
-      // Restored tabs can emit onCreated before runtime.onStartup in Edge.
-      // Arm the guard on a fresh session before any creation handler proceeds.
-      await beginSessionRestoreTracking();
+function persistRestoredTabIds() {
+  const snapshot = [...restoredTabIds];
+  restoreStorageWrite = restoreStorageWrite.catch(() => {}).then(() =>
+    chrome.storage.session.set({ restoredTabIds: snapshot })
+  );
+  return restoreStorageWrite;
+}
+
+function markRestoredTabs(tabs) {
+  for (const tab of tabs) {
+    if (tab.id != null && !observedNewTabIds.has(tab.id) && !removedTabIds.has(tab.id)) {
+      restoredTabIds.add(tab.id);
     }
-  });
-
-async function beginSessionRestoreTracking() {
-  restoreStartedAt = Date.now();
-  restoreLastActivityAt = restoreStartedAt;
-  await chrome.storage.session.set({ restoreStartedAt, restoreLastActivityAt });
+  }
+  // Save even an empty snapshot to distinguish initialization from worker wakeup.
+  return persistRestoredTabIds();
 }
 
-function isSessionRestoreActive() {
-  const now = Date.now();
-  return restoreStartedAt > 0
-    && now - restoreStartedAt < RESTORE_MAX_WINDOW_MS
-    && now - restoreLastActivityAt < RESTORE_IDLE_SETTLE_MS;
-}
+const restoreStateReady = chrome.storage.session.get('restoredTabIds').then(async (saved) => {
+  if (Array.isArray(saved.restoredTabIds)) {
+    for (const tabId of saved.restoredTabIds) restoredTabIds.add(tabId);
+  } else {
+    // Edge can deliver restored onCreated events before onStartup.
+    await markRestoredTabs(await chrome.tabs.query({}));
+  }
+});
 
-async function recordRestoreActivity() {
-  restoreLastActivityAt = Date.now();
-  await chrome.storage.session.set({ restoreLastActivityAt });
-}
-
+let startupSnapshotReady = restoreStateReady;
 chrome.runtime.onStartup.addListener(() => {
-  beginSessionRestoreTracking();
+  const tabsReady = chrome.tabs.query({});
+  startupSnapshotReady = Promise.all([startupSnapshotReady, tabsReady])
+    .then(([, tabs]) => markRestoredTabs(tabs));
+  return startupSnapshotReady;
+});
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  removedTabIds.add(tabId);
+  observedNewTabIds.delete(tabId);
+  await restoreStateReady;
+  if (restoredTabIds.delete(tabId)) await persistRestoredTabIds();
 });
 
 chrome.tabs.onCreated.addListener(async (newTab) => {
-  await restoreStateReady;
+  await newTabPositionReady;
+  await startupSnapshotReady;
+  if (restoredTabIds.has(newTab.id)) return;
+  observedNewTabIds.add(newTab.id);
   if (newTabPosition === 'default') return;
-
-  // Skip repositioning during session restore to preserve saved tab order,
-  // pinned state positions, and tab group memberships.
-  if (isSessionRestoreActive()) {
-    await recordRestoreActivity();
-    return;
-  }
 
   // Never override Edge placement for pinned/grouped tabs.
   if (newTab.pinned || (typeof newTab.groupId === 'number' && newTab.groupId !== -1)) return;
@@ -271,7 +276,7 @@ chrome.tabs.onCreated.addListener(async (newTab) => {
       targetIndex = allTabs.length - 1;
       break;
     case 'first':
-      targetIndex = 0;
+      targetIndex = allTabs.filter(tab => tab.pinned).length;
       break;
     case 'right-of-current': {
       const [active] = await chrome.tabs.query({ active: true, windowId: newTab.windowId });
@@ -289,12 +294,12 @@ chrome.tabs.onCreated.addListener(async (newTab) => {
 
   const currentTab = await chrome.tabs.get(newTab.id).catch(() => null);
   if (!currentTab || currentTab.pinned || (typeof currentTab.groupId === 'number' && currentTab.groupId !== -1)) return;
-  if (isSessionRestoreActive()) return;
+  await startupSnapshotReady;
+  if (restoredTabIds.has(currentTab.id) || removedTabIds.has(currentTab.id)) return;
 
   if (currentTab.index !== targetIndex) {
     await chrome.tabs.move(currentTab.id, { index: targetIndex });
   }
-  await chrome.tabs.update(currentTab.id, { active: true });
 });
 
 // -----------------------------------------------------------------------------
