@@ -45,6 +45,19 @@ test('new-tab position options match the background worker settings', () => {
   }
 });
 
+test('manifest and package versions match', () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  assert.equal(manifest.version, '1.0.9');
+  assert.equal(packageJson.version, manifest.version);
+});
+
+test('tab movement shortcuts use only the requested defaults', () => {
+  assert.equal(manifest.commands['move-tab-left'].suggested_key, undefined);
+  assert.equal(manifest.commands['move-tab-right'].suggested_key, undefined);
+  assert.equal(manifest.commands['move-tab-first'].suggested_key.default, 'Ctrl+Shift+U');
+  assert.equal(manifest.commands['move-tab-last'].suggested_key.default, 'Ctrl+Shift+D');
+});
+
 test('all declared commands have a background-worker handler', () => {
   const backgroundJs = fs.readFileSync(path.join(root, 'background.js'), 'utf8');
 

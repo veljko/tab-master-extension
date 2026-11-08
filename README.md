@@ -12,15 +12,17 @@ A Chrome/Edge extension that combines three tab management features in one:
 Tracks tabs in most-recently-used order. Two switching modes:
 
 - **Quick Switch** (`Alt+W` by default) — press once to jump to the previous tab; press rapidly to cycle further back through history
-- **Normal Switch forward/backward** — unassigned by default; assign in `chrome://extensions/shortcuts`
+- **Normal Switch forward/backward** — unassigned by default; assign in your browser's extension shortcut settings
 
 ### Tab Rearranging
 | Shortcut | Action |
 |---|---|
-| `Shift+Alt+←` | Move tab one position left |
-| `Shift+Alt+→` | Move tab one position right |
-| `Shift+Alt+↑` | Move tab to first position |
-| *(unassigned)* | Move tab to last position |
+| *(unassigned)* | Move tab one position left |
+| *(unassigned)* | Move tab one position right |
+| `Ctrl+Shift+U` | Move tab to first position |
+| `Ctrl+Shift+D` | Move tab to last position |
+
+Move-left and move-right have no default shortcuts. Assign them manually in your browser's extension shortcut settings if needed.
 
 ### New Tab Position
 Configure in the extension's Options page where new tabs open:
@@ -63,31 +65,29 @@ Keep changes to one issue or behavior at a time so failures are easy to attribut
 
 Default shortcuts are assigned in the manifest. To change or assign unassigned shortcuts:
 
-1. Go to `chrome://extensions/shortcuts`
+1. Go to `edge://extensions/shortcuts` in Edge or `chrome://extensions/shortcuts` in Chrome
 2. Find **Tab Master** and assign keys as desired
 
-Chrome limits extensions to **4 default shortcuts**. The following are unassigned by default and must be set manually:
+Chromium-based browsers allow up to **4 default shortcuts**. The following commands are unassigned by default and can be assigned manually:
 - MRU Normal Switch (forward)
 - MRU Normal Switch (backward)
-- Move tab to last position
+- Move tab one position left
+- Move tab one position right
 
-To enable Ctrl+Tab functionality, it’s best to use AutoHotkey.
+To enable Ctrl+Tab quick switching and map Ctrl+Shift+Up/Down to the first/last tab commands in Edge, use AutoHotkey:
 
-```
+```autohotkey
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 
 ; Remap Ctrl+Tab -> Alt+W for Tab Master extension (MRU quick switch)
-; Scoped to Edge and Chrome only — doesn't affect other apps.
+; Scoped to Edge only — doesn't affect other apps.
 
 #HotIf WinActive("ahk_exe msedge.exe")
 ^Tab:: Send("!w")
 ^+Tab:: Send("!w")   ; Ctrl+Shift+Tab also triggers quick switch (keeps cycling)
-#HotIf
-
-#HotIf WinActive("ahk_exe chrome.exe")
-^Tab:: Send("!w")
-^+Tab:: Send("!w")
+^+Up::Send("^+u")
+^+Down::Send("^+d")
 #HotIf
 ```
 
@@ -111,7 +111,7 @@ Run the included PowerShell script to package the extension:
 .\build.ps1
 ```
 
-This creates `dist/tab-master-extension-v<version>.zip` (for example, `dist/tab-master-extension-v1.0.8.zip`) containing all required files, ready for upload to the Chrome Web Store or Edge Add-ons dashboard.
+This creates `dist/tab-master-extension-v<version>.zip` (for example, `dist/tab-master-extension-v1.0.9.zip`) containing all required files, ready for upload to the Chrome Web Store or Edge Add-ons dashboard.
 
 To update an existing Chrome Web Store listing:
 
