@@ -1,53 +1,44 @@
 {
   "manifest_version": 3,
   "name": "Tab Master: MRU Switch, Rearrange & Position",
-  "version": "1.0.9",
-  "description": "All-in-one tab management: MRU tab switching (CLUT), tab rearranging with shortcuts, and control over where new tabs open.",
+  "version": "1.1.0",
+  "description": "MRU tab switching, keyboard tab rearrangement, and configurable new-tab positioning.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
-  "permissions": [
-    "storage"
-  ],
+  "permissions": ["storage"],
   "commands": {
     "quick-switch": {
-      "suggested_key": {
-        "default": "Alt+W"
-      },
-      "description": "MRU Quick Switch: cycle to last used tab (press rapidly to go further back)"
+      "suggested_key": { "default": "Alt+W" },
+      "description": "MRU Quick Switch: cycle through recently used tabs"
     },
     "normal-switch-forward": {
-      "description": "MRU Normal Switch: cycle through recently used tabs (forward)"
+      "description": "MRU Normal Switch: cycle forward through recently used tabs"
     },
     "normal-switch-backward": {
-      "description": "MRU Normal Switch: cycle through recently used tabs (backward)"
+      "description": "MRU Normal Switch: cycle backward through recently used tabs"
     },
     "move-tab-left": {
-      "description": "Move current tab one position to the left"
+      "description": "Move highlighted tab(s) one position left"
     },
     "move-tab-right": {
-      "description": "Move current tab one position to the right"
+      "description": "Move highlighted tab(s) one position right"
     },
     "move-tab-first": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+U"
-      },
-      "description": "Move current tab to the first (leftmost/top) position"
+      "description": "Move highlighted tab(s) to the first position"
     },
     "move-tab-last": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+D"
-      },
-      "description": "Move current tab to the last (rightmost/bottom) position"
+      "description": "Move highlighted tab(s) to the last position"
     }
   }
 }

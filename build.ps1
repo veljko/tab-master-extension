@@ -13,9 +13,13 @@ if (Test-Path $zipPath) { Remove-Item $zipPath }
 $files = @(
     "manifest.json",
     "background.js",
-    "content.js",
     "options.html",
     "options.js",
+    "src\mru-manager.js",
+    "src\startup-guard.js",
+    "src\tab-positioner.js",
+    "src\tab-positioning.js",
+    "src\tab-rearranger.js",
     "icons\icon16.png",
     "icons\icon48.png",
     "icons\icon128.png"

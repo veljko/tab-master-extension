@@ -1,15 +1,13 @@
 {
   "name": "tab-master-extension",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "private": true,
-  "description": "Local development scripts for the Tab Master browser extension",
-  "engines": {
-    "node": ">=18"
-  },
+  "type": "module",
+  "description": "Tab Master browser extension",
+  "engines": { "node": ">=18" },
   "scripts": {
-    "check": "node --check background.js && node --check content.js && node --check options.js",
+    "check": "node --check background.js && node --check options.js && node --check src/startup-guard.js && node --check src/mru-manager.js && node --check src/tab-positioner.js && node --check src/tab-positioning.js && node --check src/tab-rearranger.js",
     "test": "node --test",
-    "validate": "npm run check && npm test",
-    "package": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\build.ps1"
+    "validate": "npm run check && npm test"
   }
 }
